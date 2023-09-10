@@ -24,23 +24,23 @@ use stm32l5::stm32l562;
 fn main() -> ! {
     // get handles to the hardware
     let peripherals = stm32l562::Peripherals::take().unwrap();
-    let gpiog= &peripherals.GPIOG;
+    let gpiod= &peripherals.GPIOD;
     let rcc = &peripherals.RCC;
 
     // enable the GPIO clock for IO port C
-    rcc.ahb2enr.write(|w| w.gpiogen().set_bit());
-    gpiog.moder.write(|w| 
-        w.moder12().bits(0b01)
+    rcc.ahb2enr.write(|w| w.gpioden().set_bit());
+    gpiod.moder.write(|w| 
+        w.moder3().bits(0b01)
     );
  
     loop{
 
-        // gpiog.bsrr.write(|w| w.bs12().set_bit());
+        // gpiod.bsrr.write(|w| w.bs12().set_bit());
         // cortex_m::asm::delay(2000);
-        // gpiog.brr.write(|w| w.br12().set_bit());
+        // gpiod.brr.write(|w| w.br12().set_bit());
         // cortex_m::asm::delay(2000);
-        gpiog.odr.write(|w| {
-            w.odr12().bit(gpiog.odr.read().odr12().bit_is_clear())
+        gpiod.odr.write(|w| {
+            w.odr3().bit(gpiod.odr.read().odr3().bit_is_clear())
         });
         for _i in 0..1000 {
             cortex_m::asm::nop()

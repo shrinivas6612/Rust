@@ -29,7 +29,7 @@ fn main() -> ! {
     // enable the GPIO clock for IO port C
     rcc.ahb1enr.write(|w| w.gpioden().set_bit());
     gpiod.moder.write(|w| 
-        w.moder15().bits(0b01)
+        w.moder14().bits(0b01)
     );
  
     loop{
@@ -39,7 +39,7 @@ fn main() -> ! {
         // gpiod.bsrr.write(|w| w.br14().set_bit());
         // cortex_m::asm::delay(2000);
         gpiod.odr.write(|w| {
-            w.odr15().bit(gpiod.odr.read().odr15().bit_is_clear())
+            w.odr14().bit(gpiod.odr.read().odr14().bit_is_clear())
         });
         for _i in 0..1000 {
             cortex_m::asm::nop()
