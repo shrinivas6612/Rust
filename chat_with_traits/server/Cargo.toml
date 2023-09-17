@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 dashmap = "3.6.1"
+sha2 = "0.9"
+hex = "0.4"
+native-tls = "0.2"

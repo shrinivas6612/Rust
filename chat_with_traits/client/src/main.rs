@@ -1,11 +1,11 @@
 use std::net::TcpStream;
 use std::io::prelude::*;
 use std::thread;
-//use std::sync::{Arc, RwLock};
 use std::io;
 use std::str::from_utf8;
 use std::sync::mpsc;
-//use std::time::Duration;
+use sha2::{Sha256, Digest};
+use hex;
 
 
 fn main(){
@@ -39,7 +39,6 @@ fn send_data(mut stream:TcpStream,tx:mpsc::Sender<bool>){
         let mut guess = String::new();
         tx.send(true).expect("Send error");
         loop{
-            
             io::stdin()
             .read_line(&mut guess)
             .expect("Failed to read line");
@@ -50,10 +49,17 @@ fn send_data(mut stream:TcpStream,tx:mpsc::Sender<bool>){
                 },
                 Err(_)=> println!("!!!!Error Sending Msg!!!!")
             }
+            if "Quit"==guess.trim(){
+                let _=stream.shutdown(std::net::Shutdown::Read);
+                let _=stream.shutdown(std::net::Shutdown::Write);
+                println!("Quiting");
+                break;
+            }
+            guess.clear();
         }
     }else{
         println!("Authentication failed");
-        tx.send(true).expect("Send error");
+        tx.send(false).expect("Send error");
     }
 }
 
@@ -67,13 +73,13 @@ fn recv_data(mut stream:TcpStream,rx:mpsc::Receiver<bool>){
                     if size!=0{
                         let txt=from_utf8(&data).unwrap();
                         let text=txt.trim();
-                        println!("{}",text.trim());
+                        println!("server:{}",text.trim());
                     }                    
                 }
                 ,
                 Err(_e) => {
-                    println!("Could not recieve the error");
-    
+                    println!("Could not recieve the msg");
+                    break;
                 }
             }
         }
@@ -89,10 +95,12 @@ fn auth_user(mut stream:&TcpStream)->bool{
                 if size!=0{
                     let txt=from_utf8(&data).unwrap();
                     let text=txt.trim();
-                    println!("Hello{text}Hello");
+                    println!("{text}");
                     let choice="Choose 1.Register 2.Login 3.Quit";
-                    let euser="Enter user name";
-                    let epass="Enter user password";
+                    let luser="Enter user name to login";
+                    let lpass="Enter user password to login";
+                    let ruser="Enter user name to register";
+                    let rpass="Enter user password to register";
                     let auth="Authenticated";
                     let regist="Registered";
                     
@@ -120,7 +128,26 @@ fn auth_user(mut stream:&TcpStream)->bool{
                         s if s==regist =>{
                             println!("Registered successfully");
                         },
-                        s if s==euser || s==epass =>{
+                        s if s==luser || s==lpass =>{
+                            let mut sel  = String::new();
+                            io::stdin()
+                                .read_line(&mut sel)
+                                .expect("Failed to read line");
+                            if s==lpass{                                
+                                let mut hasher = Sha256::new();
+                                hasher.update(sel.trim().as_bytes());
+                                let result = hasher.finalize();
+                                sel = hex::encode(result);
+                                println!("Hash:{sel}");
+                            }
+                            match stream.write_all(sel.as_bytes()){
+                                Ok(_value)=>{
+                                    println!("!!!!Sent user information!!!!")
+                                },
+                                Err(_)=> println!("!!!!Error Sending Msg!!!!")
+                            };
+                        },
+                        s if s==ruser || s==rpass =>{
                             let mut sel  = String::new();
                             io::stdin()
                                 .read_line(&mut sel)
@@ -134,6 +161,7 @@ fn auth_user(mut stream:&TcpStream)->bool{
                         },
                         _=>{
                             println!("Error:{text}");
+                            return false
                         },
                     }
                 }
