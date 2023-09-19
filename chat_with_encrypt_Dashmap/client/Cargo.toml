@@ -1,5 +1,5 @@
 [package]
-name = "server"
+name = "client"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 sha2 = "0.9"
 hex = "0.4"
+native-tls = "0.2"
