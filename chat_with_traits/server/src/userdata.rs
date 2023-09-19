@@ -1,4 +1,10 @@
 use std::net:: TcpStream;
+
+pub trait Verify{
+    type Item;
+    fn check(&self,user_name:&str)->bool;
+    fn insert(&mut self,user_name:String,item:Self::Item)->Result<String,String>;
+}
 struct UserInfo{
     pub name:String,
     pub password:String
@@ -14,7 +20,7 @@ impl User{
             user_data:Vec::new()
         }
     }
-    pub fn check(&self,user_name:&str,user_password:&str)->bool{
+    pub fn login(&self,user_name:&str,user_password:&str)->bool{
         for v in &self.user_data{
             if v.name==user_name  && v.password==user_password{
                 return true;
@@ -22,14 +28,24 @@ impl User{
         }
         false
     }
-    pub fn register(&mut self, user_name:String,user_password:String)->bool{
-        for v in &mut self.user_data{
+}
+impl Verify for User{
+    type Item=String;
+    fn check(&self,user_name:&str)->bool{
+        for v in &self.user_data{
             if v.name==user_name{
-                return false;
+                return true;
             }
         }
+        false
+    }
+    fn insert(&mut self, user_name:String,user_password:String)->Result<String,String>{
+        if self.check(&user_name){
+            return Err("Username already present".to_string());
+        }
+        let name=user_name.clone();
         let _=&mut self.user_data.push(UserInfo{name:user_name,password:user_password});
-        true
+        Ok(format!("{} Registered successfully",name))
     }
 }
 
@@ -50,27 +66,14 @@ impl UserConnections{
             user_conn:Vec::new()
         }
     }
-    pub fn check(&self,user_name:&str)->bool{
-        for v in &self.user_conn{
-            if v.name==user_name{
-                return false
-            }
-        }
-        true
-    }
     pub fn get(&mut self,user_name:&str)->Result<&mut TcpStream,String>{
         for v in &mut self.user_conn{
-            if v.name==user_name{
+            if v.name==user_name.to_string(){
                 return Ok(&mut v.session)
             }
         }
-        Err("No user named {user_name}".to_string())
+        Err(format!("No user named {}",user_name))
     }
-    pub fn insert(&mut self, user_name:String, user_str:TcpStream)->Result<bool,String>{
-        let _=&mut self.user_conn.push(UserStream{name:user_name,session:user_str});
-        Ok(true)
-    }
-
     pub fn remove(&mut self, user_name:&str)->bool{
         let mut i = 0;
         while i < self.user_conn.len() {
@@ -82,4 +85,25 @@ impl UserConnections{
         }
         false
     }
+}
+
+impl Verify for UserConnections{
+    type Item=TcpStream;
+    fn check(&self,user_name:&str)->bool{
+        for v in &self.user_conn{
+            if v.name==user_name{
+                return true
+            }
+        }
+        false
+    }
+    fn insert(&mut self, user_name:String, user_str:Self::Item)->Result<String,String>{
+        if self.check(&user_name){
+            return Err("User already loggedIn".to_string());
+        }
+        let name=user_name.clone();
+        let _=&mut self.user_conn.push(UserStream{name:user_name,session:user_str});
+        Ok(format!("{} inserted successfully",name))
+    }
+
 }

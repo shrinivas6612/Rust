@@ -13,7 +13,7 @@ use std::time::Duration;
 use sha2::{Sha256, Digest};
 use hex;
 mod userdata;
-
+use crate::userdata::Verify;
 
 
 
@@ -50,12 +50,11 @@ fn handle_recv(mut stream:TcpStream,user_map:Arc<RwLock<userdata::User>>,stream_
         }
         {
             let mut user_stream=stream_map.write().unwrap();
-            if let Ok(_value)=user_stream.insert(user_name.clone(),stream.try_clone().expect("Failed to clone stream")){
-                println!("inserted stream of {user_name}");
-            }else{
-                println!("failed to insert stream of {user_name}");
+            let result=user_stream.insert(user_name.clone(),stream.try_clone().expect("Failed to clone stream"));
+            match result{
+                Ok(value)=>println!("{value}"),
+                Err(err)=>println!("{err}")
             }
-
         }
         loop{
             let mut data = vec![10; 100];            
@@ -185,24 +184,28 @@ fn register(mut stream:&TcpStream,user_map:&Arc<RwLock<userdata::User>>){
                 Err(_)=>println!("Couldn't send enter user password for register")
             }
             if(user_name!="" || user_name!=" ") && (user_password!="" || user_password!=" "){
-                let username=user_name.clone();
                 let mut hasher = Sha256::new();
                 hasher.update(user_password.as_bytes());
                 let result = hasher.finalize();
                 let bytes = hex::encode(result);
                 println!("Hash:{bytes}");
                 let mut user_check=user_map.write().unwrap();
-                let _reg_success=user_check.register(user_name,bytes);
-                if _reg_success{
-                    match stream.write_all("Registered".as_bytes()){
-                        Ok(_value)=> println!("{username} registered succesfully"),
-                        Err(_)=>println!("Error sending msg registered")
-                    };
-                }else{
-                    match stream.write_all("user name already present".as_bytes()){
-                        Ok(_value)=> println!("user already present"),
-                        Err(_)=>println!("Error sending msg user already present")
-                    };
+                let _reg_success=user_check.insert(user_name,bytes);
+                match _reg_success{
+                    Ok(value1)=>{
+                        match stream.write_all("Registered".as_bytes()){
+                            Ok(_value)=> println!("registerion msg sent succesfully"),
+                            Err(_)=>println!("Error sending msg registered")
+                        };
+                        println!("{value1}");
+                    }
+                    Err(err)=>{
+                        match stream.write_all("user name already present".as_bytes()){
+                            Ok(_value)=> println!("user already present sent successfully"),
+                            Err(_)=>println!("Error sending msg user already present")
+                        };
+                        println!("{err}");
+                    }
                 }
                 let duration = Duration::from_secs(1);
                 thread::sleep(duration);
@@ -251,9 +254,9 @@ fn login(mut stream:&TcpStream,user_map:&Arc<RwLock<userdata::User>>,stream_map:
             }
             let mut value1=false;
             let user_check=user_map.read().unwrap();
-            if user_check.check(&user_name,&user_password) {
+            if user_check.login(&user_name,&user_password) {
                 let user_stream=stream_map.read().unwrap();
-                if user_stream.check(&user_name){
+                if user_stream.check(&user_name)==false{
                         value1=true;
                 }
             }
